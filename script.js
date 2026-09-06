@@ -7,7 +7,7 @@
    ============================================================ */
 
 var CONFIG = {
-  API_URL: 'PASTE_URL_DEPLOYMENT_APPS_SCRIPT_DI_SINI',
+  API_URL: 'https://script.google.com/macros/s/AKfycbx07-zppRzRInC-KojvrMItwEMGDonGCWr31OcSLvdH-3t6lxtf4-IaxOYE9sNypWVd3A/exec',
   JUMLAH_SOAL: 10
 };
 
