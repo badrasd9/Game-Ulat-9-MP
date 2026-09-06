@@ -37,7 +37,6 @@ var state = {
 
 document.addEventListener('DOMContentLoaded', function () {
   renderUlat(document.getElementById('preview-ulat'), getStage_(0), false);
-  muatFilter();
   pasangEvent();
 });
 
@@ -68,31 +67,9 @@ function apiPost(bodyObj) {
 }
 
 /* ================= LAYAR: LOGIN ================= */
-
-function muatFilter() {
-  apiGet({ action: 'getFilters' }).then(function (data) {
-    isiDropdown('select-mapel', data.mapel, 'Pilih mata pelajaran');
-    isiDropdown('select-kelas', data.kelas, 'Pilih kelas');
-  }).catch(function () {
-    tampilkanErrorLogin('Gagal memuat data. Periksa koneksi internet ya.');
-  });
-}
-
-function isiDropdown(id, daftar, placeholder) {
-  var el = document.getElementById(id);
-  el.innerHTML = '';
-  var opsiKosong = document.createElement('option');
-  opsiKosong.value = '';
-  opsiKosong.textContent = placeholder;
-  el.appendChild(opsiKosong);
-
-  (daftar || []).forEach(function (item) {
-    var opt = document.createElement('option');
-    opt.value = item;
-    opt.textContent = item;
-    el.appendChild(opt);
-  });
-}
+/* Dropdown Mata Pelajaran & Kelas sudah statis di index.html (lihat <select>),
+   jadi tidak butuh fetch apa pun untuk menampilkannya — halaman login
+   langsung berfungsi begitu dibuka, tanpa tergantung status Apps Script. */
 
 function tampilkanErrorLogin(pesan) {
   document.getElementById('login-error').textContent = pesan;
