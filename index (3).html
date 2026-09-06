@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no" />
+<title>Ulat Pintar — SDN 9 Metro Pusat</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="app-header">
+  <span class="app-header__badge">🌱</span>
+  <span class="app-header__nama">SDN 9 Metro Pusat</span>
+</header>
+
+<main class="app-shell">
+
+  <!-- ===================== LAYAR 1: LOGIN ===================== -->
+  <section id="screen-login" class="screen screen--active">
+    <div class="card card--login">
+      <h1 class="judul-game">Ulat Pintar</h1>
+      <p class="subjudul">Jawab soal, bantu ulatmu tumbuh besar!</p>
+
+      <div class="caterpillar-preview" id="preview-ulat"></div>
+
+      <label class="field">
+        <span>Nama kamu</span>
+        <input type="text" id="input-nama" placeholder="Tulis namamu di sini" maxlength="40" />
+      </label>
+
+      <label class="field">
+        <span>Mata pelajaran</span>
+        <select id="select-mapel">
+          <option value="">Memuat...</option>
+        </select>
+      </label>
+
+      <label class="field">
+        <span>Kelas</span>
+        <select id="select-kelas">
+          <option value="">Memuat...</option>
+        </select>
+      </label>
+
+      <p class="pesan-error" id="login-error"></p>
+
+      <button class="btn btn--utama" id="btn-mulai">Mulai Bermain</button>
+    </div>
+  </section>
+
+  <!-- ===================== LAYAR 2: GAME ===================== -->
+  <section id="screen-game" class="screen">
+    <div class="scene">
+      <div class="scene__langit">
+        <div class="matahari"></div>
+        <div class="awan awan--1"></div>
+        <div class="awan awan--2"></div>
+      </div>
+      <div class="scene__ulat" id="stage-ulat"></div>
+      <div class="scene__rumput"></div>
+    </div>
+
+    <div class="progress-bar">
+      <div class="progress-bar__isi" id="progress-isi"></div>
+    </div>
+    <p class="progress-label" id="progress-label">Soal 1/10</p>
+
+    <div class="card card--soal">
+      <p class="teks-soal" id="teks-soal">Memuat soal…</p>
+      <div class="daftar-opsi" id="daftar-opsi"></div>
+    </div>
+
+    <div class="feedback-overlay" id="feedback-overlay"></div>
+  </section>
+
+  <!-- ===================== LAYAR 3: HASIL ===================== -->
+  <section id="screen-result" class="screen">
+    <div class="card card--hasil">
+      <div class="caterpillar-final" id="hasil-ulat"></div>
+      <h2 id="hasil-judul">Kerja bagus!</h2>
+      <p class="hasil-nama" id="hasil-nama"></p>
+
+      <div class="statistik">
+        <div class="statistik__item">
+          <span class="statistik__angka" id="hasil-benar">0</span>
+          <span class="statistik__label">Benar</span>
+        </div>
+        <div class="statistik__item">
+          <span class="statistik__angka" id="hasil-salah">0</span>
+          <span class="statistik__label">Salah</span>
+        </div>
+        <div class="statistik__item">
+          <span class="statistik__angka" id="hasil-skor">0</span>
+          <span class="statistik__label">Skor</span>
+        </div>
+      </div>
+
+      <button class="btn btn--utama" id="btn-lihat-leaderboard">Lihat Leaderboard</button>
+      <button class="btn btn--sekunder" id="btn-main-lagi">Main Lagi</button>
+    </div>
+  </section>
+
+  <!-- ===================== LAYAR 4: LEADERBOARD ===================== -->
+  <section id="screen-leaderboard" class="screen">
+    <div class="card card--leaderboard">
+      <h2>🏆 Leaderboard</h2>
+      <p class="leaderboard-sub" id="leaderboard-sub"></p>
+
+      <ol class="daftar-leaderboard" id="daftar-leaderboard"></ol>
+
+      <button class="btn btn--utama" id="btn-main-lagi-2">Main Lagi</button>
+    </div>
+  </section>
+
+</main>
+
+<script src="script.js"></script>
+</body>
+</html>
