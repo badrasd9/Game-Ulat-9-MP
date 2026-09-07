@@ -98,6 +98,8 @@ button {
 .caterpillar-preview {
   display: flex;
   justify-content: center;
+  align-items: flex-end;
+  min-height: 60px;
   margin: 6px 0 18px;
 }
 
@@ -196,21 +198,142 @@ button {
 .scene__rumput {
   position: absolute;
   left: 0; right: 0; bottom: 0;
-  height: 46px;
-  background: var(--grass);
-  border-top: 6px solid var(--grass-dark);
+  height: 54px;
+  z-index: 2;
+  overflow: hidden;
   border-radius: 0 0 22px 22px;
 }
+.scene__rumput img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
 
-.scene__ulat {
+/* ---------- Kilau dekoratif ---------- */
+.kilau {
   position: absolute;
-  left: 0; right: 0; bottom: 40px;
+  width: 26px;
+  z-index: 1;
+  animation: kilauKedip 1.8s ease-in-out infinite;
+}
+.kilau--1 { top: 60px; left: 30px; animation-delay: 0s; }
+.kilau--2 { top: 90px; right: 40px; animation-delay: 0.6s; }
+@keyframes kilauKedip {
+  0%, 100% { opacity: 0.35; transform: scale(0.8); }
+  50% { opacity: 1; transform: scale(1.1); }
+}
+
+/* ---------- Track jalan ulat ---------- */
+.track {
+  position: absolute;
+  left: 0; right: 0;
+  bottom: 40px;
+  height: 130px;
+  z-index: 1;
+}
+
+.remah {
+  position: absolute;
+  bottom: 6px;
+  transform: translateX(-50%);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+.remah img {
+  width: 34px;
+  height: auto;
+  display: block;
+  filter: drop-shadow(0 3px 3px rgba(0,0,0,0.15));
+}
+.remah--dimakan {
+  opacity: 0;
+  transform: translateX(-50%) translateY(-10px) scale(0.4);
+}
+
+.ulat-pejalan {
+  position: absolute;
+  bottom: 0;
+  transform: translateX(-50%);
+  transition: left 0.35s ease;
+}
+
+/* ---------- Petunjuk & kontrol gerak ---------- */
+.petunjuk-jalan {
+  text-align: center;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--text-soft);
+  margin: 4px 0 12px;
+}
+
+.kontrol-gerak {
   display: flex;
   justify-content: center;
-  align-items: flex-end;
-  height: 130px;
-  transition: transform 0.4s ease;
+  gap: 22px;
+  margin-bottom: 6px;
 }
+.btn-gerak {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: none;
+  background: var(--leaf);
+  color: #fff;
+  font-size: 24px;
+  font-weight: 800;
+  box-shadow: 0 6px 0 var(--grass-dark);
+  cursor: pointer;
+}
+.btn-gerak:active { transform: translateY(3px); box-shadow: 0 3px 0 var(--grass-dark); }
+.btn-gerak:disabled {
+  background: #C9DBC6;
+  box-shadow: 0 6px 0 #AEC4AA;
+  cursor: default;
+}
+
+/* ---------- Modal soal (muncul saat makan remah) ---------- */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(46, 64, 52, 0.45);
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  z-index: 30;
+}
+.modal-overlay--tampil {
+  display: flex;
+  animation: modalMasuk 0.25s ease;
+}
+@keyframes modalMasuk {
+  0% { opacity: 0; transform: scale(0.92); }
+  100% { opacity: 1; transform: scale(1); }
+}
+.modal-card {
+  background: var(--card);
+  border-radius: 22px;
+  padding: 22px 20px;
+  width: 100%;
+  max-width: 400px;
+  box-shadow: 0 14px 34px rgba(0,0,0,0.25);
+}
+
+/* Penanda benar/salah: muncul sebentar lalu hilang otomatis */
+.feedback-badge {
+  text-align: center;
+  min-height: 26px;
+  margin: 12px 0 0;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 18px;
+  opacity: 0;
+  transform: scale(0.85);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.feedback-badge.tampil { opacity: 1; transform: scale(1); }
+.feedback-badge.benar { color: var(--leaf-dark); }
+.feedback-badge.salah { color: var(--coral-dark); }
 
 /* ---------- Progress ---------- */
 .progress-bar {
@@ -282,35 +405,15 @@ button {
   background: #FFECEA;
 }
 
-/* ---------- Overlay feedback ---------- */
-.feedback-overlay {
-  position: fixed;
-  inset: 0;
-  display: none;
-  align-items: center;
-  justify-content: center;
-  pointer-events: none;
-  font-family: var(--font-display);
-  font-size: 46px;
-  font-weight: 800;
-  color: var(--leaf-dark);
-  z-index: 20;
-}
-.feedback-overlay--show {
-  display: flex;
-  animation: popFeedback 0.6s ease;
-}
-@keyframes popFeedback {
-  0% { transform: scale(0.5); opacity: 0; }
-  40% { transform: scale(1.15); opacity: 1; }
-  100% { transform: scale(1); opacity: 0; }
-}
+/* (feedback lama sudah digantikan .feedback-badge di dalam modal soal) */
 
 /* ---------- Layar hasil ---------- */
 .card--hasil { text-align: center; }
 .caterpillar-final {
   display: flex;
   justify-content: center;
+  align-items: flex-end;
+  min-height: 90px;
   margin-bottom: 10px;
 }
 .hasil-nama {
@@ -383,8 +486,11 @@ button {
   padding: 20px 0;
 }
 
-/* ---------- SVG ulat (dibuat oleh script.js) ---------- */
-.ulat-svg { display: block; }
+/* ---------- Sprite ulat/kupu-kupu (gambar asli) ---------- */
+.ulat-svg {
+  display: block;
+  transform-origin: 50% 100%;
+}
 .ulat-svg.animasi-tumbuh { animation: tumbuh 0.5s ease; }
 .ulat-svg.animasi-kupu { animation: terbang 1.2s ease; }
 @keyframes tumbuh {
