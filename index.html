@@ -67,27 +67,46 @@
 
   <!-- ===================== LAYAR 2: GAME ===================== -->
   <section id="screen-game" class="screen">
-    <div class="scene">
-      <div class="scene__langit">
-        <div class="matahari"></div>
-        <div class="awan awan--1"></div>
-        <div class="awan awan--2"></div>
-      </div>
-      <div class="scene__ulat" id="stage-ulat"></div>
-      <div class="scene__rumput"></div>
-    </div>
 
     <div class="progress-bar">
       <div class="progress-bar__isi" id="progress-isi"></div>
     </div>
     <p class="progress-label" id="progress-label">Soal 1/10</p>
 
-    <div class="card card--soal">
-      <p class="teks-soal" id="teks-soal">Memuat soal…</p>
-      <div class="daftar-opsi" id="daftar-opsi"></div>
+    <div class="scene">
+      <div class="scene__langit">
+        <div class="matahari"></div>
+        <div class="awan awan--1"></div>
+        <div class="awan awan--2"></div>
+        <img class="kilau kilau--1" src="assets/kilau.png" alt="" />
+        <img class="kilau kilau--2" src="assets/kilau.png" alt="" />
+      </div>
+
+      <div class="track" id="track">
+        <!-- remah & ulat digambar oleh script.js -->
+      </div>
+
+      <div class="scene__rumput">
+        <img src="assets/rumput.png" alt="rumput" />
+      </div>
     </div>
 
-    <div class="feedback-overlay" id="feedback-overlay"></div>
+    <p class="petunjuk-jalan">Tekan tombol untuk menjalankan ulat menuju keju di depan! 🧀</p>
+
+    <div class="kontrol-gerak">
+      <button class="btn-gerak" id="btn-mundur" aria-label="Mundur">◀</button>
+      <button class="btn-gerak" id="btn-maju" aria-label="Maju">▶</button>
+    </div>
+
+    <!-- Modal soal — hanya muncul saat ulat berhasil makan remah -->
+    <div class="modal-overlay" id="modal-soal">
+      <div class="modal-card">
+        <p class="teks-soal" id="teks-soal">Memuat soal…</p>
+        <div class="daftar-opsi" id="daftar-opsi"></div>
+        <p class="feedback-badge" id="feedback-badge"></p>
+      </div>
+    </div>
+
   </section>
 
   <!-- ===================== LAYAR 3: HASIL ===================== -->
