@@ -8,17 +8,20 @@
 
 var CONFIG = {
   API_URL: 'https://script.google.com/macros/s/AKfycbx07-zppRzRInC-KojvrMItwEMGDonGCWr31OcSLvdH-3t6lxtf4-IaxOYE9sNypWVd3A/exec',
-  JUMLAH_SOAL: 10
+  JUMLAH_SOAL: 10,
+  LANGKAH_PER_REMAH: 4 // jumlah tekan "Maju" yang dibutuhkan untuk mencapai 1 remah
 };
 
-/* Tahapan pertumbuhan ulat: setiap 2 jawaban benar naik 1 tahap. */
+/* Tahapan pertumbuhan ulat: setiap 2 jawaban benar naik 1 tahap.
+   "skala" mengatur seberapa besar gambar ulat ditampilkan (ulat yang sama,
+   makin besar skalanya) — saat mencapai 10 benar, gambar berganti kupu-kupu. */
 var STAGES = [
-  { min: 0,  n: 2, warna: '#BFE3A0', label: 'Telur Kecil' },
-  { min: 2,  n: 3, warna: '#9ED27A', label: 'Ulat Mungil' },
-  { min: 4,  n: 4, warna: '#7CC46B', label: 'Ulat Tumbuh' },
-  { min: 6,  n: 5, warna: '#5AA34C', label: 'Ulat Besar' },
-  { min: 8,  n: 6, warna: '#4CAF6D', label: 'Ulat Raksasa' },
-  { min: 10, n: 0, warna: '',        label: 'Kupu-kupu Ceria', kupu: true }
+  { min: 0,  skala: 0.55, label: 'Telur Kecil' },
+  { min: 2,  skala: 0.68, label: 'Ulat Mungil' },
+  { min: 4,  skala: 0.82, label: 'Ulat Tumbuh' },
+  { min: 6,  skala: 0.95, label: 'Ulat Besar' },
+  { min: 8,  skala: 1.15, label: 'Ulat Raksasa' },
+  { min: 10, skala: 1,    label: 'Kupu-kupu Ceria', kupu: true }
 ];
 
 var state = {
@@ -30,7 +33,14 @@ var state = {
   benar: 0,
   salah: 0,
   skor: 0,
-  stageAktifIndex: 0
+  stageAktifIndex: 0,
+
+  // ---- state gerak/track ----
+  posisiPercent: 4,      // posisi ulat sekarang (dalam % lebar track)
+  remahPositions: [],    // posisi tiap remah (dalam % lebar track)
+  langkahTersisa: 0,     // sisa tekan "Maju" untuk sampai ke remah berikutnya
+  stepSize: 0,            // besar perpindahan (%) per satu tekan tombol
+  modalTerbuka: false
 };
 
 /* ================= INIT ================= */
@@ -47,6 +57,8 @@ function pasangEvent() {
   document.getElementById('btn-lihat-leaderboard').addEventListener('click', function () {
     tampilkanLeaderboard();
   });
+  document.getElementById('btn-maju').addEventListener('click', function () { gerakUlat(1); });
+  document.getElementById('btn-mundur').addEventListener('click', function () { gerakUlat(-1); });
 }
 
 /* ================= API HELPER ================= */
@@ -92,10 +104,9 @@ function mulaiPermainan() {
   mulaiSesiBaru();
 }
 
-/* ================= SESI GAME ================= */
+/* ================= SESI GAME: TRACK & GERAK ================= */
 
 function mulaiSesiBaru() {
-  document.getElementById('teks-soal').textContent = 'Menyiapkan soal…';
   apiGet({
     action: 'getSoal',
     mapel: state.mapel,
@@ -112,30 +123,79 @@ function mulaiSesiBaru() {
     state.salah = 0;
     state.skor = 0;
     state.stageAktifIndex = 0;
+    state.posisiPercent = 4;
+    state.modalTerbuka = false;
+
+    // Sebar posisi remah secara merata di sepanjang track (menyisakan ruang di ujung)
+    var total = state.soal.length;
+    state.remahPositions = [];
+    for (var i = 0; i < total; i++) {
+      state.remahPositions.push(8 + (i + 1) * (86 / total));
+    }
 
     pindahLayar('screen-game');
-    renderUlat(document.getElementById('stage-ulat'), getStage_(0), false);
-    renderSoal();
+    tutupModalSoal();
+    siapkanSegmenBerikutnya();
+    gambarTrack();
+    updateProgressUI();
   }).catch(function () {
     tampilkanErrorLogin('Gagal memuat soal. Periksa koneksi internet ya.');
   });
 }
 
-function renderSoal() {
-  if (state.index >= state.soal.length) {
-    selesaikanSesi();
-    return;
+/** Menghitung ulang berapa % perpindahan per satu tekan tombol untuk segmen (remah) berikutnya. */
+function siapkanSegmenBerikutnya() {
+  var target = state.remahPositions[state.index];
+  state.stepSize = (target - state.posisiPercent) / CONFIG.LANGKAH_PER_REMAH;
+  state.langkahTersisa = CONFIG.LANGKAH_PER_REMAH;
+  aturTombolGerak(true);
+}
+
+function aturTombolGerak(aktif) {
+  document.getElementById('btn-maju').disabled = !aktif;
+  document.getElementById('btn-mundur').disabled = !aktif;
+}
+
+/** Dipanggil saat siswa menekan tombol Maju (arah=1) atau Mundur (arah=-1). */
+function gerakUlat(arah) {
+  if (state.modalTerbuka || state.index >= state.soal.length) return;
+
+  if (arah > 0) {
+    if (state.langkahTersisa <= 0) return;
+    state.posisiPercent += state.stepSize;
+    state.langkahTersisa--;
+  } else {
+    if (state.langkahTersisa >= CONFIG.LANGKAH_PER_REMAH) return;
+    state.posisiPercent -= state.stepSize;
+    state.langkahTersisa++;
   }
 
-  var soal = state.soal[state.index];
-  var totalSoal = state.soal.length;
+  posisikanUlatDiTrack();
 
-  document.getElementById('progress-label').textContent =
-    'Soal ' + (state.index + 1) + '/' + totalSoal;
-  document.getElementById('progress-isi').style.width =
-    Math.round((state.index / totalSoal) * 100) + '%';
+  if (arah > 0 && state.langkahTersisa === 0) {
+    aturTombolGerak(false);
+    setTimeout(makanRemah, 250); // beri jeda singkat agar animasi jalan terlihat dulu
+  }
+}
+
+/** Ulat sampai di remah: remah "dimakan" (hilang) lalu soal muncul sebagai modal. */
+function makanRemah() {
+  var elRemah = document.getElementById('remah-' + state.index);
+  if (elRemah) elRemah.classList.add('remah--dimakan');
+  bukaModalSoal();
+}
+
+/* ================= MODAL SOAL ================= */
+
+function bukaModalSoal() {
+  var soal = state.soal[state.index];
+  state.modalTerbuka = true;
 
   document.getElementById('teks-soal').textContent = soal.pertanyaan;
+
+  var badge = document.getElementById('feedback-badge');
+  badge.textContent = '';
+  badge.className = 'feedback-badge';
 
   var kontainerOpsi = document.getElementById('daftar-opsi');
   kontainerOpsi.innerHTML = '';
@@ -151,6 +211,13 @@ function renderSoal() {
     btn.addEventListener('click', function () { pilihJawaban(huruf, btn); });
     kontainerOpsi.appendChild(btn);
   });
+
+  document.getElementById('modal-soal').classList.add('modal-overlay--tampil');
+}
+
+function tutupModalSoal() {
+  document.getElementById('modal-soal').classList.remove('modal-overlay--tampil');
+  state.modalTerbuka = false;
 }
 
 function pilihJawaban(huruf, btnDipilih) {
@@ -164,32 +231,82 @@ function pilihJawaban(huruf, btnDipilih) {
       state.benar++;
       state.skor += hasil.poin || 0;
       btnDipilih.classList.add('benar');
-      tampilkanFeedback('Benar! 🎉');
+      tampilkanFeedback('Benar! 🎉', true);
     } else {
       state.salah++;
       btnDipilih.classList.add('salah');
-      tampilkanFeedback('Yuk coba lagi 💪');
+      tampilkanFeedback('Yuk coba lagi 💪', false);
     }
 
     perbaruiUlatJikaPerlu();
 
+    // Penanda benar/salah muncul sebentar, lalu modal tertutup & lanjut ke remah berikutnya.
     setTimeout(function () {
+      tutupModalSoal();
       state.index++;
-      renderSoal();
+      updateProgressUI();
+
+      if (state.index >= state.soal.length) {
+        selesaikanSesi();
+      } else {
+        siapkanSegmenBerikutnya();
+      }
     }, 1100);
   }).catch(function () {
-    tampilkanFeedback('Koneksi bermasalah, coba lagi ya.');
+    tampilkanFeedback('Koneksi bermasalah, coba lagi ya.', false);
     semuaBtn.forEach(function (b) { b.disabled = false; });
   });
 }
 
-function tampilkanFeedback(teks) {
-  var overlay = document.getElementById('feedback-overlay');
-  overlay.textContent = teks;
-  overlay.classList.remove('feedback-overlay--show');
-  // reflow agar animasi bisa diulang
-  void overlay.offsetWidth;
-  overlay.classList.add('feedback-overlay--show');
+/** Menampilkan penanda benar/salah sebentar, lalu menghilangkannya secara otomatis. */
+function tampilkanFeedback(teks, benar) {
+  var badge = document.getElementById('feedback-badge');
+  badge.textContent = teks;
+  badge.className = 'feedback-badge ' + (benar ? 'benar' : 'salah');
+
+  // reflow agar transisi CSS ter-trigger ulang setiap kali dipanggil
+  void badge.offsetWidth;
+  badge.classList.add('tampil');
+
+  setTimeout(function () {
+    badge.classList.remove('tampil');
+  }, 850);
+}
+
+/* ================= RENDER TRACK & ULAT ================= */
+
+function gambarTrack() {
+  var track = document.getElementById('track');
+  track.innerHTML = '';
+
+  state.remahPositions.forEach(function (posisi, i) {
+    var remah = document.createElement('div');
+    remah.className = 'remah';
+    remah.id = 'remah-' + i;
+    remah.style.left = posisi + '%';
+    remah.innerHTML = '<img src="assets/keju.png" alt="keju" />';
+    track.appendChild(remah);
+  });
+
+  var ulatEl = document.createElement('div');
+  ulatEl.className = 'ulat-pejalan';
+  ulatEl.id = 'ulat-pejalan';
+  track.appendChild(ulatEl);
+
+  renderUlat(ulatEl, getStage_(state.benar), false);
+  posisikanUlatDiTrack();
+}
+
+function posisikanUlatDiTrack() {
+  var ulatEl = document.getElementById('ulat-pejalan');
+  if (ulatEl) ulatEl.style.left = state.posisiPercent + '%';
+}
+
+function updateProgressUI() {
+  var total = state.soal.length;
+  var selesai = state.index;
+  document.getElementById('progress-label').textContent = 'Soal ' + Math.min(selesai + 1, total) + '/' + total;
+  document.getElementById('progress-isi').style.width = Math.round((selesai / total) * 100) + '%';
 }
 
 function perbaruiUlatJikaPerlu() {
@@ -197,7 +314,8 @@ function perbaruiUlatJikaPerlu() {
   var stageIndexBaru = STAGES.indexOf(stageBaru);
   if (stageIndexBaru !== state.stageAktifIndex) {
     state.stageAktifIndex = stageIndexBaru;
-    renderUlat(document.getElementById('stage-ulat'), stageBaru, true);
+    var ulatEl = document.getElementById('ulat-pejalan');
+    if (ulatEl) renderUlat(ulatEl, stageBaru, true);
   }
 }
 
@@ -292,74 +410,15 @@ function getStage_(jumlahBenar) {
 }
 
 function renderUlat(kontainer, stage, animasi) {
-  kontainer.innerHTML = stage.kupu ? svgKupu_() : svgUlat_(stage.n, stage.warna);
-  var svgEl = kontainer.querySelector('svg');
-  if (animasi && svgEl) {
-    svgEl.classList.add(stage.kupu ? 'animasi-kupu' : 'animasi-tumbuh');
+  var src = stage.kupu ? 'assets/kupu.png' : 'assets/ulat.png';
+  var namaAlt = stage.kupu ? 'Kupu-kupu' : 'Ulat';
+
+  kontainer.innerHTML =
+    '<img class="ulat-svg" src="' + src + '" alt="' + namaAlt +
+    '" style="width:72px; transform:scale(' + stage.skala + ');" />';
+
+  var el = kontainer.querySelector('img');
+  if (animasi && el) {
+    el.classList.add(stage.kupu ? 'animasi-kupu' : 'animasi-tumbuh');
   }
-}
-
-/** Membuat SVG ulat sederhana dari beberapa lingkaran (kepala di kanan). */
-function svgUlat_(jumlahSegmen, warnaBadan) {
-  var r = 17;
-  var overlap = 11;
-  var lebar = jumlahSegmen * (r * 2 - overlap) + r * 2 + 10;
-  var tinggi = r * 2 + 40;
-  var lingkaran = '';
-
-  for (var i = 0; i < jumlahSegmen; i++) {
-    var radius = Math.max(9, r - i * 1.5);
-    var cx = lebar - r - 6 - i * (r * 2 - overlap);
-    var cy = tinggi / 2 + (i % 2 === 0 ? 5 : -3);
-    lingkaran +=
-      '<circle cx="' + cx + '" cy="' + cy + '" r="' + radius +
-      '" fill="' + warnaBadan + '" stroke="#2E4034" stroke-width="1.5" stroke-opacity="0.25"/>';
-
-    // kaki kecil di beberapa segmen tengah
-    if (i > 0 && i < jumlahSegmen - 1) {
-      lingkaran +=
-        '<line x1="' + (cx - 4) + '" y1="' + (cy + radius - 2) + '" x2="' + (cx - 4) +
-        '" y2="' + (cy + radius + 6) + '" stroke="#2E4034" stroke-width="2" stroke-linecap="round" stroke-opacity="0.4"/>';
-    }
-  }
-
-  var headCx = lebar - r - 6;
-  var headCy = tinggi / 2 + 5;
-
-  var wajah =
-    // antena
-    '<line x1="' + (headCx - 6) + '" y1="' + (headCy - r) + '" x2="' + (headCx - 12) + '" y2="' + (headCy - r - 12) +
-    '" stroke="#2E4034" stroke-width="2" stroke-linecap="round"/>' +
-    '<line x1="' + (headCx + 4) + '" y1="' + (headCy - r) + '" x2="' + (headCx + 10) + '" y2="' + (headCy - r - 12) +
-    '" stroke="#2E4034" stroke-width="2" stroke-linecap="round"/>' +
-    '<circle cx="' + (headCx - 12) + '" cy="' + (headCy - r - 12) + '" r="3" fill="#FF6F59"/>' +
-    '<circle cx="' + (headCx + 10) + '" cy="' + (headCy - r - 12) + '" r="3" fill="#FF6F59"/>' +
-    // mata
-    '<circle cx="' + (headCx - 5) + '" cy="' + (headCy - 4) + '" r="3.4" fill="#2E4034"/>' +
-    '<circle cx="' + (headCx + 6) + '" cy="' + (headCy - 4) + '" r="3.4" fill="#2E4034"/>' +
-    // senyum
-    '<path d="M ' + (headCx - 5) + ' ' + (headCy + 5) + ' Q ' + headCx + ' ' + (headCy + 10) + ' ' + (headCx + 6) + ' ' + (headCy + 5) +
-    '" stroke="#2E4034" stroke-width="2" fill="none" stroke-linecap="round"/>';
-
-  return (
-    '<svg class="ulat-svg" width="' + Math.min(lebar, 240) + '" viewBox="0 0 ' + lebar + ' ' + tinggi + '" xmlns="http://www.w3.org/2000/svg">' +
-    lingkaran + wajah +
-    '</svg>'
-  );
-}
-
-/** Membuat SVG kupu-kupu sederhana untuk tahap akhir (10/10 benar). */
-function svgKupu_() {
-  return (
-    '<svg class="ulat-svg" width="180" viewBox="0 0 180 140" xmlns="http://www.w3.org/2000/svg">' +
-      '<ellipse cx="90" cy="70" rx="4.5" ry="34" fill="#2E4034"/>' +
-      '<path d="M90 45 Q40 20 30 55 Q35 85 90 68 Z" fill="#FFC94D" stroke="#2E4034" stroke-width="1.5"/>' +
-      '<path d="M90 45 Q140 20 150 55 Q145 85 90 68 Z" fill="#FF9F5A" stroke="#2E4034" stroke-width="1.5"/>' +
-      '<path d="M90 70 Q45 60 38 90 Q48 112 90 92 Z" fill="#FF6F59" stroke="#2E4034" stroke-width="1.5"/>' +
-      '<path d="M90 70 Q135 60 142 90 Q132 112 90 92 Z" fill="#4CAF6D" stroke="#2E4034" stroke-width="1.5"/>' +
-      '<circle cx="90" cy="40" r="7" fill="#2E4034"/>' +
-      '<line x1="87" y1="34" x2="80" y2="22" stroke="#2E4034" stroke-width="2" stroke-linecap="round"/>' +
-      '<line x1="93" y1="34" x2="100" y2="22" stroke="#2E4034" stroke-width="2" stroke-linecap="round"/>' +
-    '</svg>'
-  );
 }
